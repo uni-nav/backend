@@ -1,7 +1,7 @@
 # app/api/floors.py
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, cast
 import shutil
 import os
 from datetime import datetime
@@ -57,10 +57,12 @@ def delete_floor(floor_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Floor not found")
     
     # Rasmni o'chirish
-    if db_floor.image_url:
-        image_path = os.path.join(settings.UPLOAD_DIR, os.path.basename(db_floor.image_url))
+    if db_floor.image_url is not None:
+        img_url = str(db_floor.image_url)
+        image_path = os.path.join(settings.UPLOAD_DIR, os.path.basename(img_url))
         if os.path.exists(image_path):
             os.remove(image_path)
+    
     
     db.delete(db_floor)
     db.commit()
@@ -74,12 +76,14 @@ async def upload_floor_image(floor_id: int, file: UploadFile = File(...), db: Se
         raise HTTPException(status_code=404, detail="Floor not found")
     
     # Fayl formatini tekshirish
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     
+    original_filename = file.filename or "image.jpg"
+
     # Fayl nomini yaratish
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_extension = os.path.splitext(file.filename)[1]
+    file_extension = os.path.splitext(original_filename)[1]
     filename = f"floor_{floor_id}_{timestamp}{file_extension}"
     file_path = os.path.join(settings.UPLOAD_DIR, filename)
     
@@ -93,9 +97,9 @@ async def upload_floor_image(floor_id: int, file: UploadFile = File(...), db: Se
         width, height = img.size
     
     # Database yangilash
-    db_floor.image_url = f"/uploads/{filename}"
-    db_floor.image_width = width
-    db_floor.image_height = height
+    db_floor.image_url = f"/uploads/{filename}" # type: ignore
+    db_floor.image_width = width # type: ignore
+    db_floor.image_height = height # type: ignore
     db.commit()
     db.refresh(db_floor)
     
