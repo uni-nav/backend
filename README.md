@@ -44,20 +44,20 @@ uvicorn app.main:app --reload
 
 ### 3. Docker bilan ishga tushirish (Tavsiya etiladi)
 
+Makefile yordamida oson ishga tushirish mumkin:
+
 ```bash
-# 1. Docker Desktop o'rnating (Mac uchun)
+# Development (lokal test uchun)
+make dev
 
-# 2. Serverni ishga tushiring
-docker-compose up -d
+# Production (serverda ishga tushirish)
+make prod
 
-# 3. Loglarni ko'ring
-docker-compose logs -f api
+# To'xtatish
+make stop
 
-# 4. Database migration
-docker-compose exec api alembic upgrade head
-
-# 5. To'xtatish
-docker-compose down
+# Database migration
+make migrate
 ```
 
 ### 4. API Documentation

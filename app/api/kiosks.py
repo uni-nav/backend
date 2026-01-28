@@ -8,6 +8,7 @@ from app.models.kiosk import Kiosk
 from app.models.floor import Floor
 from app.models.waypoint import Waypoint
 from app.schemas.kiosk import Kiosk as KioskSchema, KioskCreate, KioskUpdate
+from app.core.auth import verify_admin_token  # ✅ Admin auth
 
 router = APIRouter()
 
@@ -46,7 +47,11 @@ def get_kiosk(kiosk_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=KioskSchema)
-def create_kiosk(kiosk: KioskCreate, db: Session = Depends(get_db)):
+def create_kiosk(
+    kiosk: KioskCreate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     _get_floor_or_404(db, kiosk.floor_id)
     if kiosk.waypoint_id:
         waypoint = _get_waypoint_or_404(db, kiosk.waypoint_id)
@@ -63,7 +68,9 @@ def create_kiosk(kiosk: KioskCreate, db: Session = Depends(get_db)):
 def update_kiosk(
     kiosk: KioskUpdate,
     kiosk_id: int = Path(..., gt=0),
+    kiosk_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
 ):
     db_kiosk = db.query(Kiosk).filter(Kiosk.id == kiosk_id).first()
     if not db_kiosk:
@@ -87,7 +94,11 @@ def update_kiosk(
 
 
 @router.delete("/{kiosk_id}")
-def delete_kiosk(kiosk_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
+def delete_kiosk(
+    kiosk_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     db_kiosk = db.query(Kiosk).filter(Kiosk.id == kiosk_id).first()
     if not db_kiosk:
         raise HTTPException(status_code=404, detail="Kiosk not found")

@@ -8,7 +8,17 @@ import os
 from app.api import floors, waypoints, navigation, rooms, kiosks
 from app.core.config import settings
 
+from app.core.logging_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="University Navigation API", version="1.0.0")
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Starting University Navigation API...")
 
 # CORS - configured origins only (no wildcard)
 app.add_middleware(

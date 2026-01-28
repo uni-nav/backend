@@ -10,6 +10,7 @@ from app.models.connection import Connection
 from app.schemas.waypoint import Waypoint as WaypointSchema, WaypointCreate, WaypointUpdate
 from app.schemas.connection import Connection as ConnectionSchema, ConnectionCreate
 import uuid  # Fayl tepasiga qo'shing
+from app.core.auth import verify_admin_token  # ✅ Admin auth
 
 router = APIRouter()
 
@@ -34,7 +35,11 @@ def get_waypoint(waypoint_id: str, db: Session = Depends(get_db)):
     return waypoint
 
 @router.post("/", response_model=WaypointSchema)
-def create_waypoint(waypoint: WaypointCreate, db: Session = Depends(get_db)):
+def create_waypoint(
+    waypoint: WaypointCreate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Yangi nuqta yaratish"""
     _get_floor_or_404(db, waypoint.floor_id)
     if waypoint.connects_to_floor:
@@ -46,7 +51,11 @@ def create_waypoint(waypoint: WaypointCreate, db: Session = Depends(get_db)):
     return db_waypoint
 
 @router.post("/batch", response_model=List[WaypointSchema])
-def create_waypoints_batch(waypoints: List[WaypointCreate], db: Session = Depends(get_db)):
+def create_waypoints_batch(
+    waypoints: List[WaypointCreate],
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Ko'p nuqtalarni bir vaqtda yaratish"""
     floor_ids = {wp.floor_id for wp in waypoints}
     for floor_id in floor_ids:
@@ -62,7 +71,12 @@ def create_waypoints_batch(waypoints: List[WaypointCreate], db: Session = Depend
     return db_waypoints
 
 @router.put("/{waypoint_id}", response_model=WaypointSchema)
-def update_waypoint(waypoint_id: str, waypoint: WaypointUpdate, db: Session = Depends(get_db)):
+def update_waypoint(
+    waypoint_id: str,
+    waypoint: WaypointUpdate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Nuqtani yangilash"""
     db_waypoint = db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
     if not db_waypoint:
@@ -78,7 +92,11 @@ def update_waypoint(waypoint_id: str, waypoint: WaypointUpdate, db: Session = De
     return db_waypoint
 
 @router.delete("/{waypoint_id}")
-def delete_waypoint(waypoint_id: str, db: Session = Depends(get_db)):
+def delete_waypoint(
+    waypoint_id: str,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Nuqtani o'chirish"""
     db_waypoint = db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
     if not db_waypoint:
@@ -90,7 +108,11 @@ def delete_waypoint(waypoint_id: str, db: Session = Depends(get_db)):
 
 # Connections
 @router.post("/connections", response_model=ConnectionSchema)
-def create_connection(connection: ConnectionCreate, db: Session = Depends(get_db)):
+def create_connection(
+    connection: ConnectionCreate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Bog'lanish yaratish"""
     # Agar frontend ID yubormasa, o'zimiz yaratamiz
     connection_data = connection.dict()
@@ -104,7 +126,11 @@ def create_connection(connection: ConnectionCreate, db: Session = Depends(get_db
     return db_connection
 
 @router.post("/connections/batch", response_model=List[ConnectionSchema])
-def create_connections_batch(connections: List[ConnectionCreate], db: Session = Depends(get_db)):
+def create_connections_batch(
+    connections: List[ConnectionCreate],
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Ko'p bog'lanishlarni bir vaqtda yaratish"""
     db_connections = []
     for conn in connections:
@@ -127,7 +153,11 @@ def get_connections_by_floor(floor_id: int, db: Session = Depends(get_db)):
     return connections
 
 @router.delete("/connections/{connection_id}")
-def delete_connection(connection_id: str, db: Session = Depends(get_db)):
+def delete_connection(
+    connection_id: str,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Bog'lanishni o'chirish"""
     db_connection = db.query(Connection).filter(Connection.id == connection_id).first()
     if not db_connection:

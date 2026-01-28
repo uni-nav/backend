@@ -28,7 +28,11 @@ def get_floor(floor_id: int, db: Session = Depends(get_db)):
     return floor
 
 @router.post("/", response_model=FloorSchema)
-def create_floor(floor: FloorCreate, db: Session = Depends(get_db)):
+def create_floor(
+    floor: FloorCreate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Yangi qavat yaratish"""
     db_floor = Floor(**floor.dict())
     db.add(db_floor)
@@ -37,7 +41,12 @@ def create_floor(floor: FloorCreate, db: Session = Depends(get_db)):
     return db_floor
 
 @router.put("/{floor_id}", response_model=FloorSchema)
-def update_floor(floor_id: int, floor: FloorUpdate, db: Session = Depends(get_db)):
+def update_floor(
+    floor_id: int,
+    floor: FloorUpdate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Qavatni yangilash"""
     db_floor = db.query(Floor).filter(Floor.id == floor_id).first()
     if not db_floor:
@@ -74,7 +83,13 @@ def delete_floor(
     return {"message": "Floor deleted successfully"}
 
 @router.post("/{floor_id}/upload-image")
-async def upload_floor_image(floor_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+@router.post("/{floor_id}/upload-image")
+async def upload_floor_image(
+    floor_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Qavat rasmini yuklash"""
     db_floor = db.query(Floor).filter(Floor.id == floor_id).first()
     if not db_floor:

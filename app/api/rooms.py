@@ -7,6 +7,7 @@ from app.models.room import Room
 from app.models.floor import Floor
 from app.schemas.room import Room as RoomSchema, RoomCreate, RoomUpdate
 from app.utils.room_parser import parse_room_name
+from app.core.auth import verify_admin_token  # ✅ Admin auth
 
 router = APIRouter()
 
@@ -58,6 +59,19 @@ def get_unassigned_rooms(
     
     return query.all()
 
+@router.get("/search", response_model=List[RoomSchema])
+def search_rooms(query: str, db: Session = Depends(get_db)):
+    """Xonalarni qidirish"""
+    normalized = query.strip()
+    room_id = int(normalized) if normalized.isdigit() else None
+    if room_id is not None:
+        rooms = db.query(Room).filter(
+            (Room.id == room_id) | (Room.name.ilike(f"%{normalized}%"))
+        ).all()
+    else:
+        rooms = db.query(Room).filter(Room.name.ilike(f"%{normalized}%")).all()
+    return rooms
+
 @router.get("/{room_id}", response_model=RoomSchema)
 def get_room(room_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
     """Bitta xonani olish"""
@@ -67,7 +81,11 @@ def get_room(room_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
     return room
 
 @router.post("/", response_model=RoomSchema)
-def create_room(room: RoomCreate, db: Session = Depends(get_db)):
+def create_room(
+    room: RoomCreate,
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Yangi xona yaratish"""
     # Parse qilish
     parsed = parse_room_name(room.name)
@@ -95,7 +113,12 @@ def create_room(room: RoomCreate, db: Session = Depends(get_db)):
     return db_room
 
 @router.put("/{room_id}", response_model=RoomSchema)
-def update_room(room: RoomUpdate, room_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
+def update_room(
+    room: RoomUpdate,
+    room_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Xonani yangilash"""
     db_room = db.query(Room).filter(Room.id == room_id).first()
     if not db_room:
@@ -126,7 +149,10 @@ def update_room(room: RoomUpdate, room_id: int = Path(..., gt=0), db: Session = 
 def assign_waypoint_to_room(
     room_id: int = Path(..., gt=0),
     waypoint_id: str = Query(..., min_length=1),
-    db: Session = Depends(get_db)
+    room_id: int = Path(..., gt=0),
+    waypoint_id: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
 ):
     """Xonaga waypoint biriktirish"""
     room = db.query(Room).filter(Room.id == room_id).first()
@@ -145,21 +171,12 @@ def get_rooms_by_floor(floor_id: int = Path(..., gt=0), db: Session = Depends(ge
     rooms = db.query(Room).filter(Room.floor_id == floor_id).all()
     return rooms
 
-@router.get("/search", response_model=List[RoomSchema])
-def search_rooms(query: str, db: Session = Depends(get_db)):
-    """Xonalarni qidirish"""
-    normalized = query.strip()
-    room_id = int(normalized) if normalized.isdigit() else None
-    if room_id is not None:
-        rooms = db.query(Room).filter(
-            (Room.id == room_id) | (Room.name.ilike(f"%{normalized}%"))
-        ).all()
-    else:
-        rooms = db.query(Room).filter(Room.name.ilike(f"%{normalized}%")).all()
-    return rooms
-
 @router.delete("/{room_id}")
-def delete_room(room_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
+def delete_room(
+    room_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """Xonani o'chirish"""
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
@@ -170,7 +187,10 @@ def delete_room(room_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
     return {"message": "Room deleted successfully"}
 
 @router.post("/auto-assign-floors")
-def auto_assign_floors(db: Session = Depends(get_db)):
+def auto_assign_floors(
+    db: Session = Depends(get_db),
+    _token: str = Depends(verify_admin_token)
+):
     """
     Barcha xonalarga avtomatik qavat belgilash
     Xona nomini parse qilib, mos keladigan qavatga biriktiradi
