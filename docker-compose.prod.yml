@@ -1,5 +1,4 @@
 # docker-compose.prod.yml - Production Configuration
-version: '3.8'
 
 services:
   db:
