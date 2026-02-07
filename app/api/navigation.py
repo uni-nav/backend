@@ -11,7 +11,9 @@ from app.models.floor import Floor
 from app.models.waypoint import Waypoint, WaypointType
 from app.models.connection import Connection
 from app.core.auth import verify_admin_token
-
+from app.models.room import Room
+import math
+    
 router = APIRouter()
 
 @router.post("/find-path", response_model=NavigationResponse)
@@ -78,10 +80,6 @@ def find_navigation_path(request: NavigationRequest, db: Session = Depends(get_d
 @router.get("/nearby-rooms/{waypoint_id}")
 def get_nearby_rooms(waypoint_id: str, radius: int = 100, db: Session = Depends(get_db)):
     """Waypoint atrofidagi xonalarni topish"""
-    from app.models.waypoint import Waypoint
-    from app.models.room import Room
-    import math
-    
     waypoint = db.query(Waypoint).filter(Waypoint.id == waypoint_id).first()
     if not waypoint:
         raise HTTPException(status_code=404, detail="Waypoint not found")

@@ -13,6 +13,7 @@ from app.models.waypoint import Waypoint
 from app.schemas.floor import Floor as FloorSchema, FloorCreate, FloorUpdate
 from app.core.config import settings
 from app.core.auth import verify_admin_token  # ✅ Admin auth
+from PIL import Image, UnidentifiedImageError
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -168,7 +169,6 @@ async def upload_floor_image(
         shutil.copyfileobj(file.file, buffer)
     
     # Rasm o'lchamini olish
-    from PIL import Image, UnidentifiedImageError
     try:
         with Image.open(file_path) as img:
             width, height = img.size

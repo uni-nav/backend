@@ -2,11 +2,6 @@
 
 Bu servis bino ichida navigatsiya (qavat → waypoint → connection → pathfinding) uchun API beradi.
 
-## Tezkor tushuncha: `.env` vs `.env.compose`
-
-- `.env` — **ilova sozlamalari** (SECRET_KEY, JWT_SECRET_KEY, ADMIN_TOKEN, CORS, va h.k.). API shu faylni o‘qiydi.
-- `.env.compose` / `.env.prod.compose` — **docker-compose sozlamalari** (portlar, resurs limitlar). Compose shu faylni interpolation uchun ishlatadi.
-
 ## Talablar
 
 - Docker Desktop + Docker Compose v2
@@ -16,103 +11,86 @@ Agar Docker ishlatmasangiz:
 - Python 3.11+
 - PostgreSQL 15+
 
-## 1) Docker (DEV) — tavsiya etiladi
+## Tezkor Boshlash
 
-1) `.env` tayyorlang (API uchun):
+### 1) `.env` tayyorlang
+
 ```bash
 cd bino_xarita_admin
 cp .env.example .env
 ```
 
-`.env` ichida production’da albatta o‘zgartiriladiganlar:
+**Production'da albatta o'zgartiring:**
 - `SECRET_KEY` (kamida 32 belgi)
 - `JWT_SECRET_KEY` (kamida 32 belgi, `SECRET_KEY` dan farqli)
-- `ADMIN_TOKEN` (kamida 32 belgi) — siz aytgandek, admin uchun doimiy token
-- `ALLOWED_ORIGINS` (prod’da `*` bo‘lmasin)
+- `ADMIN_TOKEN` (kamida 32 belgi)
+- `ALLOWED_ORIGINS` (prod'da `*` bo'lmasin)
+- `ENV=production`
 
-Eslatma (DEV): agar `FRONTEND_PORT` ni `.env.compose` da o‘zgartirsangiz, `.env` ichida `ALLOWED_ORIGINS` ga shu portni ham qo‘shing (masalan `http://localhost:8081`).
+### 2) Frontend nomi
 
-2) Compose env (port/resurs) tayyorlang:
+Agar frontend Git'dan boshqa nom bilan tushgan bo'lsa, `.env` da o'zgartiring:
+
 ```bash
-cp .env.compose.example .env.compose
+# GitHub: https://github.com/uni-nav/campus-navigator-1
+FRONTEND_DIR=campus-navigator-1
 ```
 
-3) Ishga tushiring:
+### 3) Portlarni sozlash
+
 ```bash
+# .env da:
+API_PORT=8000
+FRONTEND_PORT=8080
+```
+
+### 4) Ishga tushirish
+
+```bash
+# Development
 make dev-d
 make migrate
 make test
+
+# Production
+make prod
+make migrate
 ```
 
-Kirish:
-- API: `http://localhost:${API_PORT}` (default `8000`)
-- Swagger: `http://localhost:${API_PORT}/docs`
-- Frontend (dev): `http://localhost:${FRONTEND_PORT}` (default `8080`)
+## Kirish manzillari
 
-## 2) Docker (PROD)
-
-1) `.env` (ilova) production uchun tayyor bo‘lsin:
-- `ENV=production`
-- `DEBUG=false`
-- kuchli `SECRET_KEY`, `JWT_SECRET_KEY`, `ADMIN_TOKEN`
-- `ALLOWED_ORIGINS` ni faqat ishonchli domenlarga qo‘ying
-
-2) Compose env:
-```bash
-cp .env.prod.compose.example .env.prod.compose
-```
-
-3) Ishga tushirish:
-```bash
-COMPOSE_ENV=.env.prod.compose make prod
-COMPOSE_ENV=.env.prod.compose make migrate-prod
-COMPOSE_ENV=.env.prod.compose make ps-prod
-```
-
-Kirish:
-- Swagger: `http://localhost:${API_PORT}/docs`
-- Frontend: `http://localhost:${FRONTEND_PORT}`
-
-## 3) Lokal (Docker’siz)
-
-1) Virtual env:
-```bash
-cd bino_xarita_admin
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-2) Postgres ishga tushiring va `.env` ni moslang:
-- `DATABASE_URL=postgresql://<user>:<pass>@localhost:5432/university_nav`
-
-3) Migration + run:
-```bash
-alembic upgrade head
-uvicorn app.main:app --reload
-```
+| Servis | URL |
+|--------|-----|
+| API | `http://localhost:${API_PORT}` |
+| Swagger | `http://localhost:${API_PORT}/docs` |
+| Frontend | `http://localhost:${FRONTEND_PORT}` |
 
 ## Admin autentifikatsiya
 
 Admin endpointlar uchun header:
-`Authorization: Bearer <ADMIN_TOKEN>`
+```
+Authorization: Bearer <ADMIN_TOKEN>
+```
 
-`/api/auth/login` (JWT) ixtiyoriy — siz doimiy `ADMIN_TOKEN` ishlataman deganingiz uchun shart emas.
-Login endpointda rate limit + brute-force lockout bor, bu **faqat** `/api/auth/login` ga taalluqli.
+JWT login: `/api/auth/login`
 
-## DevOps komandalar
+## Asosiy komandalar
 
 ```bash
-make stop
-make logs-api
-make logs-db
-make backup-db
-make restore-db FILE=backups/db_YYYYmmdd_HHMMSS.sql
+make dev        # Development (attached)
+make dev-d      # Development (detached)
+make prod       # Production
+make stop       # To'xtatish
+make migrate    # Database migrations
+make test       # Testlarni ishlatish
+make logs       # Loglarni ko'rish
+make backup-db  # Database backup
+make help       # Barcha komandalar
 ```
 
 ## Troubleshooting
 
-DB auth/role xatolari (Docker volume eski bo‘lsa):
+DB xatolari (Docker volume eski bo'lsa):
 ```bash
 make reset-db
 make dev-d
