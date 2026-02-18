@@ -5,8 +5,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -40,18 +39,36 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration:
-# - If ALLOWED_ORIGINS contains "*", allow all origins.
-# - In wildcard mode, credentials must be disabled for standards-compliant CORS.
-allow_all_origins = "*" in settings.allowed_origins_list
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
-    allow_origin_regex=settings.allowed_origin_regex,
-    allow_credentials=not allow_all_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+CORS_ALLOW_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD"
+CORS_ALLOW_HEADERS = "Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Requested-With,If-Modified-Since"
+
+
+@app.middleware("http")
+async def permissive_cors_middleware(request: Request, call_next):
+    """
+    Fully permissive CORS for multi-client environment (web/mobile/kiosk).
+    Always returns CORS headers and answers preflight locally.
+    """
+    if request.method == "OPTIONS":
+        response = Response(status_code=200)
+    else:
+        response = await call_next(request)
+
+    origin = request.headers.get("origin")
+    if origin:
+        # Reflect any requesting origin.
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = CORS_ALLOW_METHODS
+    response.headers["Access-Control-Allow-Headers"] = request.headers.get(
+        "Access-Control-Request-Headers", CORS_ALLOW_HEADERS
+    )
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return response
 
 # Uploads papkani yaratish
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
