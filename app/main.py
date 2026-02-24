@@ -90,13 +90,9 @@ def root():
 instrumentator = Instrumentator().instrument(app)
 
 
-@app.get("/api/health")
-def health_check(db: Session = Depends(get_db)):
-    """
-    Health check endpoint that verifies database connectivity
-    """
+def _build_health_response(db: Session):
+    """Shared health check logic."""
     try:
-        # Simple query to check DB connection
         db.execute(text("SELECT 1"))
         return {
             "status": "healthy",
@@ -113,6 +109,14 @@ def health_check(db: Session = Depends(get_db)):
                 "detail": str(e)
             }
         )
+
+
+@app.get("/api/health")
+def health_check_api(db: Session = Depends(get_db)):
+    """
+    API health endpoint.
+    """
+    return _build_health_response(db)
 
 
 if __name__ == "__main__":

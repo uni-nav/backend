@@ -92,3 +92,68 @@ def test_kiosk_create_mismatched_waypoint_floor(client, auth_headers):
         headers=auth_headers,
     )
     assert response.status_code == 400
+
+
+def test_kiosk_update_floor_requires_matching_waypoint(client, auth_headers):
+    floor1 = create_floor(client, auth_headers, name="1-qavat", floor_number=1)
+    floor2 = create_floor(client, auth_headers, name="2-qavat", floor_number=2)
+    waypoint = create_waypoint(client, auth_headers, floor_id=floor1["id"], waypoint_id="wp-3")
+
+    create_resp = client.post(
+        "/api/kiosks/",
+        json={"name": "Kiosk C", "floor_id": floor1["id"], "waypoint_id": waypoint["id"]},
+        headers=auth_headers,
+    )
+    assert create_resp.status_code == 200
+    kiosk = create_resp.json()
+
+    # floor_id is changed but old waypoint belongs to previous floor -> should fail
+    update_resp = client.put(
+        f"/api/kiosks/{kiosk['id']}",
+        json={"floor_id": floor2["id"]},
+        headers=auth_headers,
+    )
+    assert update_resp.status_code == 400
+
+
+def test_kiosk_update_name_trim_and_empty_rejected(client, auth_headers):
+    floor = create_floor(client, auth_headers, name="1-qavat", floor_number=1)
+    create_resp = client.post(
+        "/api/kiosks/",
+        json={"name": "  Main Kiosk  ", "floor_id": floor["id"]},
+        headers=auth_headers,
+    )
+    assert create_resp.status_code == 200
+    kiosk = create_resp.json()
+    assert kiosk["name"] == "Main Kiosk"
+
+    update_resp = client.put(
+        f"/api/kiosks/{kiosk['id']}",
+        json={"name": "   "},
+        headers=auth_headers,
+    )
+    assert update_resp.status_code == 400
+
+
+def test_kiosk_list_by_floor(client, auth_headers):
+    floor1 = create_floor(client, auth_headers, name="1-qavat", floor_number=1)
+    floor2 = create_floor(client, auth_headers, name="2-qavat", floor_number=2)
+
+    r1 = client.post(
+        "/api/kiosks/",
+        json={"name": "Kiosk A", "floor_id": floor1["id"]},
+        headers=auth_headers,
+    )
+    assert r1.status_code == 200
+
+    r2 = client.post(
+        "/api/kiosks/",
+        json={"name": "Kiosk B", "floor_id": floor2["id"]},
+        headers=auth_headers,
+    )
+    assert r2.status_code == 200
+
+    list_floor_1 = client.get(f"/api/kiosks/floor/{floor1['id']}")
+    assert list_floor_1.status_code == 200
+    assert len(list_floor_1.json()) == 1
+    assert list_floor_1.json()[0]["floor_id"] == floor1["id"]

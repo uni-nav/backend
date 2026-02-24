@@ -32,9 +32,23 @@ def _validate_floor_waypoint_match(floor_id: int, waypoint: Waypoint) -> None:
         raise HTTPException(status_code=400, detail="Waypoint does not belong to the given floor")
 
 
+def _normalize_name(name: str) -> str:
+    normalized = str(name).strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="Kiosk name cannot be empty")
+    return normalized
+
+
 @router.get("/", response_model=List[KioskSchema])
 def get_kiosks(db: Session = Depends(get_db)):
-    kiosks = db.query(Kiosk).all()
+    kiosks = db.query(Kiosk).order_by(Kiosk.id.asc()).all()
+    return kiosks
+
+
+@router.get("/floor/{floor_id}", response_model=List[KioskSchema])
+def get_kiosks_by_floor(floor_id: int = Path(..., gt=0), db: Session = Depends(get_db)):
+    _get_floor_or_404(db, floor_id)
+    kiosks = db.query(Kiosk).filter(Kiosk.floor_id == floor_id).order_by(Kiosk.id.asc()).all()
     return kiosks
 
 
@@ -57,7 +71,10 @@ def create_kiosk(
         waypoint = _get_waypoint_or_404(db, kiosk.waypoint_id)
         _validate_floor_waypoint_match(kiosk.floor_id, waypoint)
 
-    db_kiosk = Kiosk(**kiosk.model_dump())
+    payload = kiosk.model_dump()
+    payload["name"] = _normalize_name(payload["name"])
+
+    db_kiosk = Kiosk(**payload)
     db.add(db_kiosk)
     db.commit()
     db.refresh(db_kiosk)
@@ -76,6 +93,9 @@ def update_kiosk(
         raise HTTPException(status_code=404, detail="Kiosk not found")
 
     update_data = kiosk.model_dump(exclude_unset=True)
+    if "name" in update_data and update_data["name"] is not None:
+        update_data["name"] = _normalize_name(update_data["name"])
+
     if "floor_id" in update_data and update_data["floor_id"] is not None:
         _get_floor_or_404(db, update_data["floor_id"])
 
@@ -83,6 +103,11 @@ def update_kiosk(
         waypoint = _get_waypoint_or_404(db, update_data["waypoint_id"])
         floor_id = update_data.get("floor_id", db_kiosk.floor_id)
         _validate_floor_waypoint_match(floor_id, waypoint)
+    elif "floor_id" in update_data and db_kiosk.waypoint_id:
+        # Floor changed but waypoint not explicitly changed.
+        # Keep data integrity by validating existing waypoint-floor pair.
+        existing_waypoint = _get_waypoint_or_404(db, db_kiosk.waypoint_id)
+        _validate_floor_waypoint_match(update_data["floor_id"], existing_waypoint)
 
     for key, value in update_data.items():
         setattr(db_kiosk, key, value)
