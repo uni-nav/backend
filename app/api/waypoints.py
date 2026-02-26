@@ -12,6 +12,7 @@ from app.schemas.waypoint import Waypoint as WaypointSchema, WaypointCreate, Way
 from app.schemas.connection import Connection as ConnectionSchema, ConnectionCreate
 import uuid  # Fayl tepasiga qo'shing
 from app.core.auth import verify_admin_token  # ✅ Admin auth
+from app.services.pathfinding import GraphCache
 
 router = APIRouter()
 
@@ -72,6 +73,7 @@ def create_waypoint(
     db.add(db_waypoint)
     db.commit()
     db.refresh(db_waypoint)
+    GraphCache.get_instance().clear()
     return db_waypoint
 
 @router.post("/batch", response_model=List[WaypointSchema])
@@ -92,6 +94,7 @@ def create_waypoints_batch(
     db.commit()
     for wp in db_waypoints:
         db.refresh(wp)
+    GraphCache.get_instance().clear()
     return db_waypoints
 
 @router.put("/{waypoint_id}", response_model=WaypointSchema)
@@ -113,6 +116,7 @@ def update_waypoint(
     
     db.commit()
     db.refresh(db_waypoint)
+    GraphCache.get_instance().clear()
     return db_waypoint
 
 @router.delete("/{waypoint_id}")
@@ -128,6 +132,7 @@ def delete_waypoint(
     
     db.delete(db_waypoint)
     db.commit()
+    GraphCache.get_instance().clear()
     return {"message": "Waypoint deleted successfully"}
 
 # Connections
@@ -153,6 +158,7 @@ def create_connection(
     db.add(db_connection)
     db.commit()
     db.refresh(db_connection)
+    GraphCache.get_instance().clear()
     return db_connection
 
 @router.post("/connections/batch", response_model=List[ConnectionSchema])
@@ -184,6 +190,7 @@ def create_connections_batch(
     db.commit()
     for conn in db_connections:
         db.refresh(conn)
+    GraphCache.get_instance().clear()
     return db_connections
 
 @router.get("/connections/floor/{floor_id}", response_model=List[ConnectionSchema])
@@ -211,4 +218,5 @@ def delete_connection(
     
     db.delete(db_connection)
     db.commit()
+    GraphCache.get_instance().clear()
     return {"message": "Connection deleted successfully"}

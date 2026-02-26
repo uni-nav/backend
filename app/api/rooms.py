@@ -64,15 +64,25 @@ def get_unassigned_rooms(
 
 @router.get("/search", response_model=List[RoomSchema])
 def search_rooms(query: str, db: Session = Depends(get_db)):
-    """Xonalarni qidirish"""
+    """Xonalarni qidirish (nom va kalit so'zlar bo'yicha)"""
+    from sqlalchemy import or_
     normalized = query.strip()
     room_id = int(normalized) if normalized.isdigit() else None
     if room_id is not None:
         rooms = db.query(Room).filter(
-            (Room.id == room_id) | (Room.name.ilike(f"%{normalized}%"))
+            or_(
+                Room.id == room_id,
+                Room.name.ilike(f"%{normalized}%"),
+                Room.keywords.ilike(f"%{normalized}%")
+            )
         ).all()
     else:
-        rooms = db.query(Room).filter(Room.name.ilike(f"%{normalized}%")).all()
+        rooms = db.query(Room).filter(
+            or_(
+                Room.name.ilike(f"%{normalized}%"),
+                Room.keywords.ilike(f"%{normalized}%")
+            )
+        ).all()
     return rooms
 
 @router.get("/{room_id}", response_model=RoomSchema)

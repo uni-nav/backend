@@ -8,6 +8,7 @@ class RoomBase(BaseModel):
     name: str
     waypoint_id: Optional[str] = None
     floor_id: Optional[PositiveInt] = None
+    keywords: Optional[str] = None
 
 class RoomCreate(RoomBase):
     pass  # ID avtomatik generatsiya qilinadi (Integer)
@@ -16,6 +17,7 @@ class RoomUpdate(BaseModel):
     name: Optional[str] = None
     waypoint_id: Optional[str] = None
     floor_id: Optional[PositiveInt] = None
+    keywords: Optional[str] = None
 
 class Room(RoomBase):
     id: PositiveInt  # ← Integer

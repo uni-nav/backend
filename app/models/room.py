@@ -1,7 +1,7 @@
 
 # app/models/room.py
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -15,6 +15,7 @@ class Room(Base):
     # Yangi ustunlar (migration kerak)
     waypoint_id = Column(String(50), ForeignKey("waypoints.id", ondelete="SET NULL"), nullable=True)
     floor_id = Column(Integer, ForeignKey("floors.id", ondelete="SET NULL"), nullable=True, index=True)
+    keywords = Column(Text, nullable=True)  # Kalit so'zlar (masalan: "dekanat kutubxona")
     
     # Relationships
     floor = relationship("Floor", back_populates="rooms")
